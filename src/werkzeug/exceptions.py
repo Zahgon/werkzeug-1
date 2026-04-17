@@ -90,10 +90,7 @@ class HTTPException(Exception):
     @property
     def name(self) -> str:
         """The status name."""
-        try:
-            return HTTPStatus(self.code or 0).phrase
-        except ValueError:
-            return "Unknown"
+        pass
 
     def get_description(
         self,
@@ -101,13 +98,7 @@ class HTTPException(Exception):
         scope: dict[str, t.Any] | None = None,
     ) -> str:
         """Get the description."""
-        if self.description is None:
-            description = ""
-        else:
-            description = self.description
-
-        description = escape(description).replace("\n", Markup("<br>"))
-        return f"<p>{description}</p>"
+        pass
 
     def get_body(
         self,
@@ -115,13 +106,7 @@ class HTTPException(Exception):
         scope: dict[str, t.Any] | None = None,
     ) -> str:
         """Get the HTML body."""
-        return (
-            "<!doctype html>\n"
-            "<html lang=en>\n"
-            f"<title>{self.code} {escape(self.name)}</title>\n"
-            f"<h1>{escape(self.name)}</h1>\n"
-            f"{self.get_description(environ)}\n"
-        )
+        pass
 
     def get_headers(
         self,
@@ -129,7 +114,7 @@ class HTTPException(Exception):
         scope: dict[str, t.Any] | None = None,
     ) -> list[tuple[str, str]]:
         """Get a list of headers."""
-        return [("Content-Type", "text/html; charset=utf-8")]
+        pass
 
     @t.overload
     def get_response(
@@ -159,14 +144,7 @@ class HTTPException(Exception):
             :class:`werkzeug.sansio.Response` for ASGI if called with
             ``scope``.
         """
-        from .wrappers.response import Response
-
-        if self.response is not None:
-            return self.response
-        if environ is not None:
-            environ = _get_environ(environ)
-        headers = self.get_headers(environ, scope)
-        return Response(self.get_body(environ, scope), self.code, headers)
+        pass
 
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse
@@ -221,16 +199,7 @@ class BadRequestKeyError(BadRequest, KeyError):
         else:
             KeyError.__init__(self, arg)
 
-    @property
-    def description(self) -> str:
-        if self.show_exception:
-            return f"{self._description}\n{KeyError.__name__}: {KeyError.__str__(self)}"
 
-        return self._description
-
-    @description.setter
-    def description(self, value: str) -> None:
-        self._description = value
 
 
 class ClientDisconnected(BadRequest):
@@ -324,15 +293,6 @@ class Unauthorized(HTTPException):
 
         self.www_authenticate = www_authenticate
 
-    def get_headers(
-        self,
-        environ: WSGIEnvironment | None = None,
-        scope: dict[str, t.Any] | None = None,
-    ) -> list[tuple[str, str]]:
-        headers = super().get_headers(environ, scope)
-        if self.www_authenticate:
-            headers.extend(("WWW-Authenticate", str(x)) for x in self.www_authenticate)
-        return headers
 
 
 class Forbidden(HTTPException):
@@ -388,15 +348,6 @@ class MethodNotAllowed(HTTPException):
         super().__init__(description=description, response=response)
         self.valid_methods = valid_methods
 
-    def get_headers(
-        self,
-        environ: WSGIEnvironment | None = None,
-        scope: dict[str, t.Any] | None = None,
-    ) -> list[tuple[str, str]]:
-        headers = super().get_headers(environ, scope)
-        if self.valid_methods:
-            headers.append(("Allow", ", ".join(self.valid_methods)))
-        return headers
 
 
 class NotAcceptable(HTTPException):
@@ -548,15 +499,6 @@ class RequestedRangeNotSatisfiable(HTTPException):
         self.length = length
         self.units = units
 
-    def get_headers(
-        self,
-        environ: WSGIEnvironment | None = None,
-        scope: dict[str, t.Any] | None = None,
-    ) -> list[tuple[str, str]]:
-        headers = super().get_headers(environ, scope)
-        if self.length is not None:
-            headers.append(("Content-Range", f"{self.units} */{self.length}"))
-        return headers
 
 
 class ExpectationFailed(HTTPException):
@@ -670,24 +612,6 @@ class _RetryAfter(HTTPException):
         super().__init__(description, response)
         self.retry_after = retry_after
 
-    def get_headers(
-        self,
-        environ: WSGIEnvironment | None = None,
-        scope: dict[str, t.Any] | None = None,
-    ) -> list[tuple[str, str]]:
-        headers = super().get_headers(environ, scope)
-
-        if self.retry_after:
-            if isinstance(self.retry_after, datetime):
-                from .http import http_date
-
-                value = http_date(self.retry_after)
-            else:
-                value = str(self.retry_after)
-
-            headers.append(("Retry-After", value))
-
-        return headers
 
 
 class TooManyRequests(_RetryAfter):
@@ -901,7 +825,7 @@ def abort(status: int | SansIOResponse, *args: t.Any, **kwargs: t.Any) -> t.NoRe
        abort(Response('Hello World'))
 
     """
-    _aborter(status, *args, **kwargs)
+    pass
 
 
 _aborter: Aborter = Aborter()

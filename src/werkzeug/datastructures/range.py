@@ -86,10 +86,7 @@ class Range:
         """Creates a :class:`~werkzeug.datastructures.ContentRange` object
         from the current range and given content length.
         """
-        rng = self.range_for_length(length)
-        if rng is not None:
-            return ContentRange(self.units, rng[0], rng[1], length)
-        return None
+        pass
 
     def to_header(self) -> str:
         """Converts the object back into an HTTP header."""
@@ -175,19 +172,13 @@ class ContentRange:
         units: str | None = "bytes",
     ) -> None:
         """Simple method to update the ranges."""
-        assert http.is_byte_range_valid(start, stop, length), "Bad range provided"
-        self._units: str | None = units
-        self._start: int | None = start
-        self._stop: int | None = stop
-        self._length: int | None = length
-        if self.on_update is not None:
-            self.on_update(self)
+        pass
 
     def unset(self) -> None:
         """Sets the units to `None` which indicates that the header should
         no longer be used.
         """
-        self.set(None, None, units=None)
+        pass
 
     def to_header(self) -> str:
         if self._units is None:

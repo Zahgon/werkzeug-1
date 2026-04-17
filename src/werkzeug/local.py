@@ -29,7 +29,7 @@ def release_local(local: Local | LocalStack[t.Any]) -> None:
 
     .. versionadded:: 0.6.1
     """
-    local.__release_local__()
+    pass
 
 
 class Local:
@@ -139,10 +139,7 @@ class LocalStack(t.Generic[T]):
 
     def push(self, obj: T) -> list[T]:
         """Add a new item to the top of the stack."""
-        stack = self._storage.get([]).copy()
-        stack.append(obj)
-        self._storage.set(stack)
-        return stack
+        pass
 
     def pop(self) -> T | None:
         """Remove the top item from the stack and return it. If the
@@ -162,12 +159,7 @@ class LocalStack(t.Generic[T]):
         """The topmost item on the stack.  If the stack is empty,
         `None` is returned.
         """
-        stack = self._storage.get([])
-
-        if len(stack) == 0:
-            return None
-
-        return stack[-1]
+        pass
 
     def __call__(
         self, name: str | None = None, *, unbound_message: str | None = None
@@ -221,20 +213,13 @@ class LocalManager:
         """Release the data in the locals for this context. Call this at
         the end of each request or use :meth:`make_middleware`.
         """
-        for local in self.locals:
-            release_local(local)
+        pass
 
     def make_middleware(self, app: WSGIApplication) -> WSGIApplication:
         """Wrap a WSGI application so that local data is released
         automatically after the response has been sent for a request.
         """
-
-        def application(
-            environ: WSGIEnvironment, start_response: StartResponse
-        ) -> t.Iterable[bytes]:
-            return ClosingIterator(app(environ, start_response), self.cleanup)
-
-        return application
+        pass
 
     def middleware(self, func: WSGIApplication) -> WSGIApplication:
         """Like :meth:`make_middleware` but used as a decorator on the
@@ -246,7 +231,7 @@ class LocalManager:
             def application(environ, start_response):
                 ...
         """
-        return update_wrapper(self.make_middleware(func), func)
+        pass
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} storages: {len(self.locals)}>"
@@ -363,9 +348,6 @@ class _ProxyIOp(_ProxyLookup):
         super().__init__(f, fallback)
 
         def bind_f(instance: LocalProxy[t.Any], obj: t.Any) -> t.Callable[..., t.Any]:
-            def i_op(self: t.Any, other: t.Any) -> LocalProxy[t.Any]:
-                f(self, other)  # type: ignore
-                return instance
 
             return i_op.__get__(obj, type(obj))  # type: ignore
 
@@ -375,14 +357,10 @@ class _ProxyIOp(_ProxyLookup):
 def _l_to_r_op(op: F) -> F:
     """Swap the argument order to turn an l-op into an r-op."""
 
-    def r_op(obj: t.Any, other: t.Any) -> t.Any:
-        return op(other, obj)
 
     return t.cast(F, r_op)
 
 
-def _identity(o: T) -> T:
-    return o
 
 
 class LocalProxy(t.Generic[T]):

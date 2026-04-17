@@ -107,18 +107,7 @@ class ProfilerMiddleware:
     ) -> t.Iterable[bytes]:
         response_body: list[bytes] = []
 
-        def catching_start_response(status, headers, exc_info=None):  # type: ignore
-            start_response(status, headers, exc_info)
-            return response_body.append
 
-        def runapp() -> None:
-            app_iter = self._app(
-                environ, t.cast("StartResponse", catching_start_response)
-            )
-            response_body.extend(app_iter)
-
-            if hasattr(app_iter, "close"):
-                app_iter.close()
 
         profile = Profile()
         start = time.time()

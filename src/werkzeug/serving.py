@@ -102,58 +102,8 @@ class DechunkedInput(io.RawIOBase):
         self._done = False
         self._len = 0
 
-    def readable(self) -> bool:
-        return True
 
-    def read_chunk_len(self) -> int:
-        try:
-            line = self._rfile.readline().decode("latin1")
-            _len = int(line.strip(), 16)
-        except ValueError as e:
-            raise OSError("Invalid chunk header") from e
-        if _len < 0:
-            raise OSError("Negative chunk length not allowed")
-        return _len
 
-    def readinto(self, buf: bytearray) -> int:  # type: ignore
-        read = 0
-        while not self._done and read < len(buf):
-            if self._len == 0:
-                # This is the first chunk or we fully consumed the previous
-                # one. Read the next length of the next chunk
-                self._len = self.read_chunk_len()
-
-            if self._len == 0:
-                # Found the final chunk of size 0. The stream is now exhausted,
-                # but there is still a final newline that should be consumed
-                self._done = True
-
-            if self._len > 0:
-                # There is data (left) in this chunk, so append it to the
-                # buffer. If this operation fully consumes the chunk, this will
-                # reset self._len to 0.
-                n = min(len(buf), self._len)
-
-                # If (read + chunk size) becomes more than len(buf), buf will
-                # grow beyond the original size and read more data than
-                # required. So only read as much data as can fit in buf.
-                if read + n > len(buf):
-                    buf[read:] = self._rfile.read(len(buf) - read)
-                    self._len -= len(buf) - read
-                    read = len(buf)
-                else:
-                    buf[read : read + n] = self._rfile.read(n)
-                    self._len -= n
-                    read += n
-
-            if self._len == 0:
-                # Skip the terminating newline of a chunk that has been fully
-                # consumed. This also applies to the 0-sized final chunk
-                terminator = self._rfile.readline()
-                if terminator not in (b"\n", b"\r\n", b"\r"):
-                    raise OSError("Missing chunk terminating newline")
-
-        return read
 
 
 class WSGIRequestHandler(BaseHTTPRequestHandler):
@@ -161,246 +111,12 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
 
     server: BaseWSGIServer
 
-    @property
-    def server_version(self) -> str:  # type: ignore
-        return self.server._server_version
 
-    def make_environ(self) -> WSGIEnvironment:
-        request_url = urlsplit(self.path)
-        url_scheme = "http" if self.server.ssl_context is None else "https"
 
-        if not self.client_address:
-            self.client_address = ("<local>", 0)
-        elif isinstance(self.client_address, str):
-            self.client_address = (self.client_address, 0)
-
-        # If there was no scheme but the path started with two slashes,
-        # the first segment may have been incorrectly parsed as the
-        # netloc, prepend it to the path again.
-        if not request_url.scheme and request_url.netloc:
-            path_info = f"/{request_url.netloc}{request_url.path}"
-        else:
-            path_info = request_url.path
-
-        path_info = unquote(path_info)
-
-        environ: WSGIEnvironment = {
-            "wsgi.version": (1, 0),
-            "wsgi.url_scheme": url_scheme,
-            "wsgi.input": self.rfile,
-            "wsgi.errors": sys.stderr,
-            "wsgi.multithread": self.server.multithread,
-            "wsgi.multiprocess": self.server.multiprocess,
-            "wsgi.run_once": False,
-            "werkzeug.socket": self.connection,
-            "SERVER_SOFTWARE": self.server_version,
-            "REQUEST_METHOD": self.command,
-            "SCRIPT_NAME": "",
-            "PATH_INFO": _wsgi_encoding_dance(path_info),
-            "QUERY_STRING": _wsgi_encoding_dance(request_url.query),
-            # Non-standard, added by mod_wsgi, uWSGI
-            "REQUEST_URI": _wsgi_encoding_dance(self.path),
-            # Non-standard, added by gunicorn
-            "RAW_URI": _wsgi_encoding_dance(self.path),
-            "REMOTE_ADDR": self.address_string(),
-            "REMOTE_PORT": self.port_integer(),
-            "SERVER_NAME": self.server.server_address[0],
-            "SERVER_PORT": str(self.server.server_address[1]),
-            "SERVER_PROTOCOL": self.request_version,
-        }
-
-        for key, value in self.headers.items():
-            if "_" in key:
-                continue
-
-            key = key.upper().replace("-", "_")
-            value = value.replace("\r\n", "")
-            if key not in ("CONTENT_TYPE", "CONTENT_LENGTH"):
-                key = f"HTTP_{key}"
-                if key in environ:
-                    value = f"{environ[key]},{value}"
-            environ[key] = value
-
-        if "chunked" in parse_set_header(environ.get("HTTP_TRANSFER_ENCODING")):
-            environ["wsgi.input_terminated"] = True
-            environ["wsgi.input"] = DechunkedInput(environ["wsgi.input"])
-
-        # Per RFC 2616, if the URL is absolute, use that as the host.
-        # We're using "has a scheme" to indicate an absolute URL.
-        if request_url.scheme and request_url.netloc:
-            environ["HTTP_HOST"] = request_url.netloc
-
-        try:
-            # binary_form=False gives nicer information, but wouldn't be compatible with
-            # what Nginx or Apache could return.
-            peer_cert = self.connection.getpeercert(binary_form=True)
-            if peer_cert is not None:
-                # Nginx and Apache use PEM format.
-                environ["SSL_CLIENT_CERT"] = ssl.DER_cert_to_PEM_cert(peer_cert)
-        except ValueError:
-            # SSL handshake hasn't finished.
-            self.server.log("error", "Cannot fetch SSL peer certificate info")
-        except AttributeError:
-            # Not using TLS, the socket will not have getpeercert().
-            pass
-
-        return environ
-
-    def run_wsgi(self) -> None:
-        self.environ = environ = self.make_environ()
-        status_set: str | None = None
-        headers_set: list[tuple[str, str]] | None = None
-        status_sent: str | None = None
-        headers_sent: list[tuple[str, str]] | None = None
-        chunk_response: bool = False
-
-        def write(data: bytes) -> None:
-            nonlocal status_sent, headers_sent, chunk_response
-            assert status_set is not None, "write() before start_response"
-            assert headers_set is not None, "write() before start_response"
-            if status_sent is None:
-                status_sent = status_set
-                headers_sent = headers_set
-                try:
-                    code_str, msg = status_sent.split(None, 1)
-                except ValueError:
-                    code_str, msg = status_sent, ""
-                code = int(code_str)
-                self.send_response(code, msg)
-                header_keys = set()
-                for key, value in headers_sent:
-                    self.send_header(key, value)
-                    header_keys.add(key.lower())
-
-                # Use chunked transfer encoding if there is no content
-                # length. Do not use for 1xx and 204 responses. 304
-                # responses and HEAD requests are also excluded, which
-                # is the more conservative behavior and matches other
-                # parts of the code.
-                # https://httpwg.org/specs/rfc7230.html#rfc.section.3.3.1
-                if (
-                    not (
-                        "content-length" in header_keys
-                        or environ["REQUEST_METHOD"] == "HEAD"
-                        or (100 <= code < 200)
-                        or code in {204, 304}
-                    )
-                    and self.protocol_version >= "HTTP/1.1"
-                ):
-                    chunk_response = True
-                    self.send_header("Transfer-Encoding", "chunked")
-
-                # Always close the connection. This disables HTTP/1.1
-                # keep-alive connections. They aren't handled well by
-                # Python's http.server because it doesn't know how to
-                # drain the stream before the next request line.
-                self.send_header("Connection", "close")
-                self.end_headers()
-
-            assert isinstance(data, bytes), "applications must write bytes"
-
-            if data:
-                if chunk_response:
-                    self.wfile.write(hex(len(data))[2:].encode())
-                    self.wfile.write(b"\r\n")
-
-                self.wfile.write(data)
-
-                if chunk_response:
-                    self.wfile.write(b"\r\n")
-
-            self.wfile.flush()
-
-        def start_response(status, headers, exc_info=None):  # type: ignore
-            nonlocal status_set, headers_set
-            if exc_info:
-                try:
-                    if headers_sent:
-                        raise exc_info[1].with_traceback(exc_info[2])
-                finally:
-                    exc_info = None
-            elif headers_set:
-                raise AssertionError("Headers already set")
-            status_set = status
-            headers_set = headers
-            return write
-
-        def execute(app: WSGIApplication) -> None:
-            application_iter = app(environ, start_response)
-            try:
-                for data in application_iter:
-                    write(data)
-                if not headers_sent:
-                    write(b"")
-                if chunk_response:
-                    self.wfile.write(b"0\r\n\r\n")
-            finally:
-                # Check for any remaining data in the read socket, and discard it. This
-                # will read past request.max_content_length, but lets the client see a
-                # 413 response instead of a connection reset failure. If we supported
-                # keep-alive connections, this naive approach would break by reading the
-                # next request line. Since we know that write (above) closes every
-                # connection we can read everything.
-                selector = selectors.DefaultSelector()
-                selector.register(self.connection, selectors.EVENT_READ)
-                total_size = 0
-                total_reads = 0
-
-                # A timeout of 0 tends to fail because a client needs a small amount of
-                # time to continue sending its data.
-                while selector.select(timeout=0.01):
-                    # Only read 10MB into memory at a time.
-                    data = self.rfile.read(10_000_000)
-                    total_size += len(data)
-                    total_reads += 1
-
-                    # Stop reading on no data, >=10GB, or 1000 reads. If a client sends
-                    # more than that, they'll get a connection reset failure.
-                    if not data or total_size >= 10_000_000_000 or total_reads > 1000:
-                        break
-
-                selector.close()
-
-                if hasattr(application_iter, "close"):
-                    application_iter.close()
-
-        try:
-            execute(self.server.app)
-        except connection_dropped_errors as e:
-            self.connection_dropped(e, environ)
-        except Exception as e:
-            if self.server.passthrough_errors:
-                raise
-
-            if status_sent is not None and chunk_response:
-                self.close_connection = True
-
-            try:
-                # if we haven't yet sent the headers but they are set
-                # we roll back to be able to set them again.
-                if status_sent is None:
-                    status_set = None
-                    headers_set = None
-                execute(InternalServerError())
-            except Exception:
-                pass
-
-            from .debug.tbtools import DebugTraceback
-
-            msg = DebugTraceback(e).render_traceback_text()
-            self.server.log("error", f"Error on request:\n{msg}")
 
     def handle(self) -> None:
         """Handles a request ignoring dropped connections."""
-        try:
-            super().handle()
-        except (ConnectionError, TimeoutError) as e:
-            self.connection_dropped(e)
-        except Exception as e:
-            if self.server.ssl_context is not None and is_ssl_error(e):
-                self.log_error("SSL error occurred: %s", e)
-            else:
-                raise
+        pass
 
     def connection_dropped(
         self, error: BaseException, environ: WSGIEnvironment | None = None
@@ -417,17 +133,7 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
         # All other attributes are forwarded to the base class.
         return getattr(super(), name)
 
-    def address_string(self) -> str:
-        if getattr(self, "environ", None):
-            return self.environ["REMOTE_ADDR"]  # type: ignore
 
-        if not self.client_address:
-            return "<local>"
-
-        return self.client_address[0]
-
-    def port_integer(self) -> int:
-        return self.client_address[1]
 
     # Escape control characters. This is defined (but private) in Python 3.12.
     _control_char_table = str.maketrans(
@@ -435,49 +141,9 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
     )
     _control_char_table[ord("\\")] = r"\\"
 
-    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
-        try:
-            path = uri_to_iri(self.path)
-            msg = f"{self.command} {path} {self.request_version}"
-        except AttributeError:
-            # path isn't set if the requestline was bad
-            msg = self.requestline
 
-        # Escape control characters that may be in the decoded path.
-        msg = msg.translate(self._control_char_table)
-        code = str(code)
 
-        if code[0] == "1":  # 1xx - Informational
-            msg = _ansi_style(msg, "bold")
-        elif code == "200":  # 2xx - Success
-            pass
-        elif code == "304":  # 304 - Resource Not Modified
-            msg = _ansi_style(msg, "cyan")
-        elif code[0] == "3":  # 3xx - Redirection
-            msg = _ansi_style(msg, "green")
-        elif code == "404":  # 404 - Resource Not Found
-            msg = _ansi_style(msg, "yellow")
-        elif code[0] == "4":  # 4xx - Client Error
-            msg = _ansi_style(msg, "bold", "red")
-        else:  # 5xx, or any other response
-            msg = _ansi_style(msg, "bold", "magenta")
 
-        self.log("info", '"%s" %s %s', msg, code, size)
-
-    def log_error(self, format: str, *args: t.Any) -> None:
-        self.log("error", format, *args)
-
-    def log_message(self, format: str, *args: t.Any) -> None:
-        self.log("info", format, *args)
-
-    def log(self, type: str, message: str, *args: t.Any) -> None:
-        # an IPv6 scoped address contains "%" which breaks logging
-        address_string = self.address_string().replace("%", "%%")
-        _log(
-            type,
-            f"{address_string} - - [{self.log_date_time_string()}] {message}\n",
-            *args,
-        )
 
 
 def _ansi_style(value: str, *styles: str) -> str:
@@ -642,19 +308,13 @@ def load_ssl_context(
 
 def is_ssl_error(error: Exception | None = None) -> bool:
     """Checks if the given error (or the current one) is an SSL error."""
-    if error is None:
-        error = t.cast(Exception, sys.exc_info()[1])
-    return isinstance(error, ssl.SSLError)
+    pass
 
 
 def select_address_family(host: str, port: int) -> socket.AddressFamily:
     """Return ``AF_INET4``, ``AF_INET6``, or ``AF_UNIX`` depending on
     the host and port."""
-    if host.startswith("unix://"):
-        return socket.AF_UNIX
-    elif ":" in host and hasattr(socket, "AF_INET6"):
-        return socket.AF_INET6
-    return socket.AF_INET
+    pass
 
 
 def get_sockaddr(
@@ -662,16 +322,7 @@ def get_sockaddr(
 ) -> tuple[str, int] | str:
     """Return a fully qualified socket address that can be passed to
     :func:`socket.bind`."""
-    if family == af_unix:
-        # Absolute path avoids IDNA encoding error when path starts with dot.
-        return os.path.abspath(host.partition("://")[2])
-    try:
-        res = socket.getaddrinfo(
-            host, port, family, socket.SOCK_STREAM, socket.IPPROTO_TCP
-        )
-    except socket.gaierror:
-        return host, port
-    return res[0][4]  # type: ignore
+    pass
 
 
 def get_interface_ip(family: socket.AddressFamily) -> str:
@@ -806,8 +457,6 @@ class BaseWSGIServer(HTTPServer):
 
         self._server_version = f"Werkzeug/{importlib.metadata.version('werkzeug')}"
 
-    def log(self, type: str, message: str, *args: t.Any) -> None:
-        _log(type, message, *args)
 
     def serve_forever(self, poll_interval: float = 0.5) -> None:
         try:
@@ -817,13 +466,6 @@ class BaseWSGIServer(HTTPServer):
         finally:
             self.server_close()
 
-    def handle_error(
-        self, request: t.Any, client_address: tuple[str, int] | str
-    ) -> None:
-        if self.passthrough_errors:
-            raise
-
-        return super().handle_error(request, client_address)
 
     def log_startup(self) -> None:
         """Show information about the address when starting the server."""

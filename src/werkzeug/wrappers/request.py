@@ -152,10 +152,7 @@ class Request(_SansIORequest):
 
         :return: request object
         """
-        from ..test import EnvironBuilder
-
-        with EnvironBuilder(*args, **kwargs) as builder:
-            return builder.get_request(cls)  # type: ignore[return-value]
+        pass
 
     @classmethod
     def application(cls, f: t.Callable[[Request], WSGIApplication]) -> WSGIApplication:
@@ -175,25 +172,7 @@ class Request(_SansIORequest):
         :param f: the WSGI callable to decorate
         :return: a new WSGI callable
         """
-        #: return a callable that wraps the -2nd argument with the request
-        #: and calls the function with all the arguments up to that one and
-        #: the request.  The return value is then called with the latest
-        #: two arguments.  This makes it possible to use this decorator for
-        #: both standalone WSGI functions as well as bound methods and
-        #: partially applied functions.
-        from ..exceptions import HTTPException
-
-        @functools.wraps(f)
-        def application(*args: t.Any) -> cabc.Iterable[bytes]:
-            request = cls(args[-2])
-            with request:
-                try:
-                    resp = f(*args[:-2] + (request,))
-                except HTTPException as e:
-                    resp = t.cast("WSGIApplication", e.get_response(args[-2]))
-                return resp(*args[-2:])
-
-        return t.cast("WSGIApplication", application)
+        pass
 
     def _get_file_stream(
         self,
@@ -221,12 +200,7 @@ class Request(_SansIORequest):
                                not provided because webbrowsers do not provide
                                this value.
         """
-        return default_stream_factory(
-            total_content_length=total_content_length,
-            filename=filename,
-            content_type=content_type,
-            content_length=content_length,
-        )
+        pass
 
     @property
     def want_form_data_parsed(self) -> bool:
@@ -235,7 +209,7 @@ class Request(_SansIORequest):
 
         .. versionadded:: 0.8
         """
-        return bool(self.environ.get("CONTENT_TYPE"))
+        pass
 
     def make_form_data_parser(self) -> FormDataParser:
         """Creates the form data parser. Instantiates the
@@ -340,15 +314,7 @@ class Request(_SansIORequest):
             The stream is always set (but may be consumed) even if form parsing was
             accessed first.
         """
-        if self.shallow:
-            raise RuntimeError(
-                "This request was created with 'shallow=True', reading"
-                " from the input stream is disabled."
-            )
-
-        return get_input_stream(
-            self.environ, max_content_length=self.max_content_length
-        )
+        pass
 
     input_stream = environ_property[t.IO[bytes]](
         "wsgi.input",
@@ -368,7 +334,7 @@ class Request(_SansIORequest):
 
         To get the raw data even if it represents form data, use :meth:`get_data`.
         """
-        return self.get_data(parse_form_data=True)
+        pass
 
     @t.overload
     def get_data(
@@ -440,8 +406,7 @@ class Request(_SansIORequest):
             Previous to Werkzeug 0.9 this would only contain form data for POST
             and PUT requests.
         """
-        self._load_form_data()
-        return self.form
+        pass
 
     @cached_property
     def values(self) -> CombinedMultiDict[str, str]:
@@ -492,22 +457,21 @@ class Request(_SansIORequest):
         :class:`~werkzeug.datastructures.FileStorage` documentation for
         more details about the used data structure.
         """
-        self._load_form_data()
-        return self.files
+        pass
 
     @property
     def script_root(self) -> str:
         """Alias for :attr:`self.root_path`. ``environ["SCRIPT_NAME"]``
         without a trailing slash.
         """
-        return self.root_path
+        pass
 
     @cached_property
     def url_root(self) -> str:
         """Alias for :attr:`root_url`. The URL with scheme, host, and
         root path. For example, ``https://example.com/app/``.
         """
-        return self.root_url
+        pass
 
     remote_user = environ_property[str](
         "REMOTE_USER",
@@ -555,7 +519,7 @@ class Request(_SansIORequest):
         .. versionchanged:: 2.1
             Raise a 400 error if the content type is incorrect.
         """
-        return self.get_json()
+        pass
 
     # Cached values for ``(silent=False, silent=True)``. Initialized
     # with sentinel values.
@@ -594,37 +558,7 @@ class Request(_SansIORequest):
         .. versionchanged:: 2.1
             Raise a 400 error if the content type is incorrect.
         """
-        if cache and self._cached_json[silent] is not Ellipsis:
-            return self._cached_json[silent]
-
-        if not (force or self.is_json):
-            if not silent:
-                return self.on_json_loading_failed(None)
-            else:
-                return None
-
-        data = self.get_data(cache=cache)
-
-        try:
-            rv = self.json_module.loads(data)
-        except ValueError as e:
-            if silent:
-                rv = None
-
-                if cache:
-                    normal_rv, _ = self._cached_json
-                    self._cached_json = (normal_rv, rv)
-            else:
-                rv = self.on_json_loading_failed(e)
-
-                if cache:
-                    _, silent_rv = self._cached_json
-                    self._cached_json = (rv, silent_rv)
-        else:
-            if cache:
-                self._cached_json = (rv, rv)
-
-        return rv
+        pass
 
     def on_json_loading_failed(self, e: ValueError | None) -> t.Any:
         """Called if :meth:`get_json` fails and isn't silenced.
@@ -639,10 +573,4 @@ class Request(_SansIORequest):
         .. versionchanged:: 2.3
             Raise a 415 error instead of 400.
         """
-        if e is not None:
-            raise BadRequest(f"Failed to decode JSON object: {e}")
-
-        raise UnsupportedMediaType(
-            "Did not attempt to load JSON data because the request"
-            " Content-Type was not 'application/json'."
-        )
+        pass

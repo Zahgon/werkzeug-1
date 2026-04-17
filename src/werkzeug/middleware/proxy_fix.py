@@ -116,12 +116,7 @@ class ProxyFix:
 
         .. versionadded:: 0.15
         """
-        if not (trusted and value):
-            return None
-        values = parse_list_header(value)
-        if len(values) >= trusted:
-            return values[-trusted]
-        return None
+        pass
 
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse

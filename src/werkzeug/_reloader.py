@@ -266,21 +266,7 @@ class WatchdogReloaderLoop(ReloaderLoop):
         trigger_reload = self.trigger_reload
 
         class EventHandler(PatternMatchingEventHandler):
-            def dispatch(self, event: FileSystemEvent) -> None:
-                if event.event_type not in {
-                    EVENT_TYPE_CLOSED,
-                    EVENT_TYPE_CREATED,
-                    EVENT_TYPE_DELETED,
-                    EVENT_TYPE_MODIFIED,
-                    EVENT_TYPE_MOVED,
-                }:
-                    # skip events that don't involve changes to the file
-                    return
 
-                super().dispatch(event)
-
-            def on_any_event(self, event: FileSystemEvent) -> None:
-                trigger_reload(event.src_path)
 
         reloader_name = Observer.__name__.lower()  # type: ignore[attr-defined]
 

@@ -209,27 +209,7 @@ def secure_filename(filename: str) -> str:
 
     :param filename: the filename to secure
     """
-    filename = unicodedata.normalize("NFKD", filename)
-    filename = filename.encode("ascii", "ignore").decode("ascii")
-
-    for sep in os.sep, os.path.altsep:
-        if sep:
-            filename = filename.replace(sep, " ")
-    filename = str(_filename_ascii_strip_re.sub("", "_".join(filename.split()))).strip(
-        "._"
-    )
-
-    # on nt a couple of special files are present in each folder.  We
-    # have to ensure that the target file is not such a filename.  In
-    # this case we prepend an underline
-    if (
-        os.name == "nt"
-        and filename
-        and filename.split(".")[0].upper() in _windows_device_files
-    ):
-        filename = f"_{filename}"
-
-    return filename
+    pass
 
 
 def redirect(
@@ -600,30 +580,7 @@ def import_string(import_name: str, silent: bool = False) -> t.Any:
                    `None` is returned instead.
     :return: imported object
     """
-    import_name = import_name.replace(":", ".")
-    try:
-        try:
-            __import__(import_name)
-        except ImportError:
-            if "." not in import_name:
-                raise
-        else:
-            return sys.modules[import_name]
-
-        module_name, obj_name = import_name.rsplit(".", 1)
-        module = __import__(module_name, globals(), locals(), [obj_name])
-        try:
-            return getattr(module, obj_name)
-        except AttributeError as e:
-            raise ImportError(e) from None
-
-    except ImportError as e:
-        if not silent:
-            raise ImportStringError(import_name, e).with_traceback(
-                sys.exc_info()[2]
-            ) from None
-
-    return None
+    pass
 
 
 def find_modules(
@@ -643,20 +600,7 @@ def find_modules(
     :param recursive: set to `True` if recursion should happen.
     :return: generator
     """
-    module = import_string(import_path)
-    path = getattr(module, "__path__", None)
-    if path is None:
-        raise ValueError(f"{import_path!r} is not a package")
-    basename = f"{module.__name__}."
-    for _importer, modname, ispkg in pkgutil.iter_modules(path):
-        modname = basename + modname
-        if ispkg:
-            if include_packages:
-                yield modname
-            if recursive:
-                yield from find_modules(modname, include_packages, True)
-        else:
-            yield modname
+    pass
 
 
 class ImportStringError(ImportError):

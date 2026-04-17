@@ -230,48 +230,7 @@ class FormDataParser:
 
         return stream, self.cls(), self.cls()
 
-    def _parse_multipart(
-        self,
-        stream: t.IO[bytes],
-        mimetype: str,
-        content_length: int | None,
-        options: dict[str, str],
-    ) -> t_parse_result:
-        boundary = options.get("boundary", "").encode("ascii")
 
-        if not boundary:
-            raise ValueError("Missing boundary")
-
-        with MultiPartParser(
-            stream_factory=self.stream_factory,
-            max_form_memory_size=self.max_form_memory_size,
-            max_form_parts=self.max_form_parts,
-            cls=self.cls,
-        ) as parser:
-            form, files = parser.parse(stream, boundary, content_length)
-
-        return stream, form, files
-
-    def _parse_urlencoded(
-        self,
-        stream: t.IO[bytes],
-        mimetype: str,
-        content_length: int | None,
-        options: dict[str, str],
-    ) -> t_parse_result:
-        if (
-            self.max_form_memory_size is not None
-            and content_length is not None
-            and content_length > self.max_form_memory_size
-        ):
-            raise RequestEntityTooLarge()
-
-        items = parse_qsl(
-            stream.read().decode(),
-            keep_blank_values=True,
-            errors="werkzeug.url_quote",
-        )
-        return stream, self.cls(items), self.cls()
 
 
 class MultiPartParser:

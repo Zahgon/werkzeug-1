@@ -42,25 +42,16 @@ class FileStorage:
         if content_length is not None:
             headers["Content-Length"] = str(content_length)
 
-    def _parse_content_type(self) -> None:
-        if not hasattr(self, "_parsed_content_type"):
-            self._parsed_content_type = http.parse_options_header(self.content_type)
 
     @property
     def content_type(self) -> str | None:
         """The content-type sent in the header.  Usually not available"""
-        return self.headers.get("content-type")
+        pass
 
     @property
     def content_length(self) -> int:
         """The content-length sent in the header.  Usually not available"""
-        if "content-length" in self.headers:
-            try:
-                return _plain_int(self.headers["content-length"])
-            except ValueError:
-                pass
-
-        return 0
+        pass
 
     @property
     def mimetype(self) -> str:
@@ -71,8 +62,7 @@ class FileStorage:
 
         .. versionadded:: 0.7
         """
-        self._parse_content_type()
-        return self._parsed_content_type[0].lower()
+        pass
 
     @property
     def mimetype_params(self) -> dict[str, str]:
@@ -82,8 +72,7 @@ class FileStorage:
 
         .. versionadded:: 0.7
         """
-        self._parse_content_type()
-        return self._parsed_content_type[1]
+        pass
 
     def save(
         self, dst: str | os.PathLike[str] | t.IO[bytes], buffer_size: int = 16384
@@ -103,22 +92,7 @@ class FileStorage:
         .. versionchanged:: 1.0
             Supports :mod:`pathlib`.
         """
-        from shutil import copyfileobj
-
-        close_dst = False
-
-        if hasattr(dst, "__fspath__"):
-            dst = fspath(dst)
-
-        if isinstance(dst, str):
-            dst = open(dst, "wb")
-            close_dst = True
-
-        try:
-            copyfileobj(self.stream, dst, buffer_size)
-        finally:
-            if close_dst:
-                dst.close()
+        pass
 
     def close(self) -> None:
         """Close the underlying file if possible."""
@@ -176,25 +150,7 @@ class FileMultiDict(MultiDict[str, FileStorage]):
         .. versionchanged:: 3.2
             The filename is detected from an IO object.
         """
-        if isinstance(file, FileStorage):
-            self.add(name, file)
-            return
-
-        if isinstance(file, (str, os.PathLike)):
-            if filename is None:
-                filename = os.fspath(file)
-
-            file_obj: t.IO[bytes] = open(file, "rb")
-        else:
-            file_obj = file  # type: ignore[assignment]
-            filename = _guess_filename(file_obj, filename)
-
-        if filename is not None and content_type is None:
-            content_type = (
-                mimetypes.guess_type(filename)[0] or "application/octet-stream"
-            )
-
-        self.add(name, FileStorage(file_obj, filename, name, content_type))
+        pass
 
     def close(self) -> None:
         """Call :meth:`~FileStorage.close` on every open file.
@@ -215,20 +171,6 @@ class FileMultiDict(MultiDict[str, FileStorage]):
         super().clear()
 
 
-def _guess_filename(stream: t.IO[t.Any], filename: str | None) -> str | None:
-    if filename is not None:
-        return fsdecode(filename)
-
-    filename = getattr(stream, "name", None)
-
-    if filename is not None:
-        filename = fsdecode(filename)
-
-        # Python names special streams like `<stderr>`, ignore these.
-        if filename[:1] == "<" and filename[-1:] == ">":
-            filename = None
-
-    return filename
 
 
 # circular dependencies

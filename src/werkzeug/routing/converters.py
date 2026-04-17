@@ -165,9 +165,6 @@ class NumberConverter(BaseConverter):
             value_str = value_str.zfill(self.fixed_digits)
         return value_str
 
-    @property
-    def signed_regex(self) -> str:
-        return f"-?{self.regex}"
 
 
 class IntegerConverter(NumberConverter):

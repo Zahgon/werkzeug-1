@@ -25,10 +25,7 @@ class ETags(cabc.Collection[str]):
     def as_set(self, include_weak: bool = False) -> set[str]:
         """Convert the `ETags` object into a python set.  Per default all the
         weak etags are not part of this set."""
-        rv = set(self._strong)
-        if include_weak:
-            rv.update(self._weak)
-        return rv
+        pass
 
     def is_weak(self, etag: str) -> bool:
         """Check if an etag is weak."""
@@ -54,12 +51,7 @@ class ETags(cabc.Collection[str]):
         """When passed a quoted tag it will check if this tag is part of the
         set.  If the tag is weak it is checked against weak and strong tags,
         otherwise strong only."""
-        from ..http import unquote_etag
-
-        etag, weak = unquote_etag(etag)
-        if weak:
-            return self.contains_weak(etag)
-        return self.contains(etag)
+        pass
 
     def to_header(self) -> str:
         """Convert the etags set into a HTTP header string."""

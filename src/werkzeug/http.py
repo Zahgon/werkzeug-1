@@ -1277,9 +1277,7 @@ def remove_hop_by_hop_headers(headers: ds.Headers | list[tuple[str, str]]) -> No
 
     :param headers: a list or :class:`Headers` object.
     """
-    headers[:] = [
-        (key, value) for key, value in headers if not is_hop_by_hop_header(key)
-    ]
+    pass
 
 
 def is_entity_header(header: str) -> bool:

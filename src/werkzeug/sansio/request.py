@@ -170,63 +170,49 @@ class Request:
         .. versionchanged:: 2.3
             Invalid bytes remain percent encoded.
         """
-        return self.parameter_storage_class(
-            parse_qsl(
-                self.query_string.decode(),
-                keep_blank_values=True,
-                errors="werkzeug.url_quote",
-            )
-        )
+        pass
 
     @cached_property
     def access_route(self) -> list[str]:
         """If a forwarded header exists this is a list of all ip addresses
         from the client ip to the last proxy server.
         """
-        if "X-Forwarded-For" in self.headers:
-            return self.list_storage_class(
-                parse_list_header(self.headers["X-Forwarded-For"])
-            )
-        elif self.remote_addr is not None:
-            return self.list_storage_class([self.remote_addr])
-        return self.list_storage_class()
+        pass
 
     @cached_property
     def full_path(self) -> str:
         """Requested path, including the query string."""
-        return f"{self.path}?{self.query_string.decode()}"
+        pass
 
     @property
     def is_secure(self) -> bool:
         """``True`` if the request was made with a secure protocol
         (HTTPS or WSS).
         """
-        return self.scheme in {"https", "wss"}
+        pass
 
     @cached_property
     def url(self) -> str:
         """The full request URL with the scheme, host, root path, path,
         and query string."""
-        return get_current_url(
-            self.scheme, self.host, self.root_path, self.path, self.query_string
-        )
+        pass
 
     @cached_property
     def base_url(self) -> str:
         """Like :attr:`url` but without the query string."""
-        return get_current_url(self.scheme, self.host, self.root_path, self.path)
+        pass
 
     @cached_property
     def root_url(self) -> str:
         """The request URL scheme, host, and root path. This is the root
         that the application is accessed from.
         """
-        return get_current_url(self.scheme, self.host, self.root_path)
+        pass
 
     @cached_property
     def host_url(self) -> str:
         """The request URL scheme and host only."""
-        return get_current_url(self.scheme, self.host)
+        pass
 
     @cached_property
     def host(self) -> str:
@@ -235,18 +221,13 @@ class Request:
 
         See :func:`.get_host` for a detailed explanation.
         """
-        return get_host(
-            self.scheme, self.headers.get("host"), self.server, self.trusted_hosts
-        )
+        pass
 
     @cached_property
     def cookies(self) -> ImmutableMultiDict[str, str]:
         """A :class:`dict` with the contents of all cookies transmitted with
         the request."""
-        wsgi_combined_cookie = ";".join(self.headers.getlist("Cookie"))
-        return parse_cookie(  # type: ignore
-            wsgi_combined_cookie, cls=self.dict_storage_class
-        )
+        pass
 
     # Common Descriptors
 
@@ -266,10 +247,7 @@ class Request:
         the entity-body that would have been sent had the request been a
         GET.
         """
-        return get_content_length(
-            http_content_length=self.headers.get("Content-Length"),
-            http_transfer_encoding=self.headers.get("Transfer-Encoding"),
-        )
+        pass
 
     content_encoding = header_property[str](
         "Content-Encoding",
@@ -294,15 +272,7 @@ class Request:
 
         .. versionadded:: 0.9
         """
-        import warnings
-
-        warnings.warn(
-            "The 'content_md5' attribute is deprecated and will be removed in"
-            " Werkzeug 3.3. The header has not been used for a long time.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.headers.get("Content-MD5")
+        pass
 
     referrer = header_property[str](
         "Referer",
@@ -336,11 +306,6 @@ class Request:
         read_only=True,
     )
 
-    def _parse_content_type(self) -> None:
-        if not hasattr(self, "_parsed_content_type"):
-            self._parsed_content_type = parse_options_header(
-                self.headers.get("Content-Type", "")
-            )
 
     @property
     def mimetype(self) -> str:
@@ -349,8 +314,7 @@ class Request:
         type is ``text/HTML; charset=utf-8`` the mimetype would be
         ``'text/html'``.
         """
-        self._parse_content_type()
-        return self._parsed_content_type[0].lower()
+        pass
 
     @property
     def mimetype_params(self) -> dict[str, str]:
@@ -358,8 +322,7 @@ class Request:
         type is ``text/html; charset=utf-8`` the params would be
         ``{'charset': 'utf-8'}``.
         """
-        self._parse_content_type()
-        return self._parsed_content_type[1]
+        pass
 
     @property
     def pragma(self) -> HeaderSet:
@@ -368,15 +331,7 @@ class Request:
         .. deprecated:: 3.2
             Use ``cache_control`` instead. Will be removed in Werkzeug 3.3.
         """
-        import warnings
-
-        warnings.warn(
-            "The 'pragma' attribute is deprecated and will be removed in"
-            " Werkzeug 3.3. Use 'cache_control' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return parse_set_header(self.headers.get("Pragma"))
+        pass
 
     # Accept
 
@@ -385,7 +340,7 @@ class Request:
         """List of mimetypes this client supports as
         :class:`~werkzeug.datastructures.MIMEAccept` object.
         """
-        return parse_accept_header(self.headers.get("Accept"), MIMEAccept)
+        pass
 
     @cached_property
     def accept_charsets(self) -> Accept:
@@ -396,18 +351,7 @@ class Request:
             The header has not been used for a long time. Clients do not send
             it. Assume UTF-8. Will be removed in Werkzeug 3.3.
         """
-        import warnings
-
-        from ..datastructures.accept import _CharsetAccept
-
-        warnings.warn(
-            "The 'accept_charsets' attribute is deprecated and will be removed"
-            " in Werkzeug 3.3. The header is not sent by browsers, and UTF-8 is"
-            " assumed.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return parse_accept_header(self.headers.get("Accept-Charset"), _CharsetAccept)
+        pass
 
     @cached_property
     def accept_encodings(self) -> Accept:
@@ -415,7 +359,7 @@ class Request:
         are compression encodings such as gzip.  For charsets have a look at
         :attr:`accept_charset`.
         """
-        return parse_accept_header(self.headers.get("Accept-Encoding"))
+        pass
 
     @cached_property
     def accept_languages(self) -> LanguageAccept:
@@ -426,7 +370,7 @@ class Request:
            In previous versions this was a regular
            :class:`~werkzeug.datastructures.Accept` object.
         """
-        return parse_accept_header(self.headers.get("Accept-Language"), LanguageAccept)
+        pass
 
     # ETag
 
@@ -435,8 +379,7 @@ class Request:
         """A :class:`~werkzeug.datastructures.RequestCacheControl` object
         for the incoming cache control headers.
         """
-        cache_control = self.headers.get("Cache-Control")
-        return parse_cache_control_header(cache_control, None, RequestCacheControl)
+        pass
 
     @cached_property
     def if_match(self) -> ETags:
@@ -444,7 +387,7 @@ class Request:
 
         :rtype: :class:`~werkzeug.datastructures.ETags`
         """
-        return parse_etags(self.headers.get("If-Match"))
+        pass
 
     @cached_property
     def if_none_match(self) -> ETags:
@@ -452,7 +395,7 @@ class Request:
 
         :rtype: :class:`~werkzeug.datastructures.ETags`
         """
-        return parse_etags(self.headers.get("If-None-Match"))
+        pass
 
     @cached_property
     def if_modified_since(self) -> datetime | None:
@@ -461,7 +404,7 @@ class Request:
         .. versionchanged:: 2.0
             The datetime object is timezone-aware.
         """
-        return parse_date(self.headers.get("If-Modified-Since"))
+        pass
 
     @cached_property
     def if_unmodified_since(self) -> datetime | None:
@@ -470,7 +413,7 @@ class Request:
         .. versionchanged:: 2.0
             The datetime object is timezone-aware.
         """
-        return parse_date(self.headers.get("If-Unmodified-Since"))
+        pass
 
     @cached_property
     def if_range(self) -> IfRange:
@@ -481,7 +424,7 @@ class Request:
 
         .. versionadded:: 0.7
         """
-        return parse_if_range_header(self.headers.get("If-Range"))
+        pass
 
     @cached_property
     def range(self) -> Range | None:
@@ -491,7 +434,7 @@ class Request:
 
         :rtype: :class:`~werkzeug.datastructures.Range`
         """
-        return parse_range_header(self.headers.get("Range"))
+        pass
 
     # User Agent
 
@@ -506,7 +449,7 @@ class Request:
             The built-in parser was removed. Set ``user_agent_class`` to a ``UserAgent``
             subclass to parse data from the string.
         """
-        return self.user_agent_class(self.headers.get("User-Agent", ""))
+        pass
 
     # Authorization
 
@@ -519,7 +462,7 @@ class Request:
             :class:`Authorization` is no longer a ``dict``. The ``token`` attribute
             was added for auth schemes that use a token instead of parameters.
         """
-        return Authorization.from_header(self.headers.get("Authorization"))
+        pass
 
     # CORS
 
@@ -609,9 +552,4 @@ class Request:
         """Check if the mimetype indicates JSON data, either
         :mimetype:`application/json` or :mimetype:`application/*+json`.
         """
-        mt = self.mimetype
-        return (
-            mt == "application/json"
-            or mt.startswith("application/")
-            and mt.endswith("+json")
-        )
+        pass

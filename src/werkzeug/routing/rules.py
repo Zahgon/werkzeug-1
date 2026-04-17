@@ -89,10 +89,7 @@ def _find(value: str, target: str, pos: int) -> int:
 
     Returns the *value* length if *target* isn't found.
     """
-    try:
-        return value.index(target, pos)
-    except ValueError:
-        return len(value)
+    pass
 
 
 def _pythonize(value: str) -> None | bool | int | float | str:
@@ -560,7 +557,7 @@ class Rule(RuleFactory):
 
         :internal:
         """
-        self.bind(self.map, rebind=True)
+        pass
 
     def bind(self, map: Map, rebind: bool = False) -> None:
         """Bind the url to a map and create a regular expression based on
@@ -594,13 +591,6 @@ class Rule(RuleFactory):
             raise LookupError(f"the converter {converter_name!r} does not exist")
         return self.map.converters[converter_name](self.map, *args, **kwargs)
 
-    def _encode_query_vars(self, query_vars: t.Mapping[str, t.Any]) -> str:
-        items: t.Iterable[tuple[str, str]] = iter_multi_items(query_vars)
-
-        if self.map.sort_parameters:
-            items = sorted(items, key=self.map.sort_key)
-
-        return _urlencode(items)
 
     def _parse_rule(self, rule: str) -> t.Iterable[RulePart]:
         content = ""

@@ -225,19 +225,7 @@ class Response(_SansIOResponse):
         :param environ: a WSGI environment object.
         :return: a response object.
         """
-        if not isinstance(response, Response):
-            if environ is None:
-                raise TypeError(
-                    "cannot convert WSGI application into response"
-                    " objects without an environ"
-                )
-
-            from ..test import run_wsgi_app
-
-            response = Response(*run_wsgi_app(response, environ))
-
-        response.__class__ = cls
-        return response
+        pass
 
     @classmethod
     def from_app(
@@ -293,11 +281,7 @@ class Response(_SansIOResponse):
 
         .. versionadded:: 0.9
         """
-        if isinstance(value, str):
-            value = value.encode()
-        self.response = [value]
-        if self.automatically_set_content_length:
-            self.headers["Content-Length"] = str(len(value))
+        pass
 
     data = property(
         get_data,
@@ -376,11 +360,7 @@ class Response(_SansIOResponse):
         This is useful for checking before applying some sort of post
         filtering that should not take place for streamed responses.
         """
-        try:
-            len(self.response)  # type: ignore
-        except (TypeError, AttributeError):
-            return True
-        return False
+        pass
 
     @property
     def is_sequence(self) -> bool:
@@ -390,7 +370,7 @@ class Response(_SansIOResponse):
 
         .. versionadded:: 0.6
         """
-        return isinstance(self.response, (tuple, list))
+        pass
 
     def close(self) -> None:
         """Close the wrapped response if possible.  You can also use the object
@@ -429,11 +409,7 @@ class Response(_SansIOResponse):
         .. versionchanged:: 0.6
             The ``Content-Length`` header is set.
         """
-        # Always freeze the encoded response body, ignore
-        # implicit_sequence_conversion and direct_passthrough.
-        self.response = list(self.iter_encoded())
-        self.headers["Content-Length"] = str(sum(map(len, self.response)))
-        self.add_etag()
+        pass
 
     def get_wsgi_headers(self, environ: WSGIEnvironment) -> Headers:
         """This is automatically called right before the response is started
@@ -531,18 +507,7 @@ class Response(_SansIOResponse):
         :param environ: the WSGI environment of the request.
         :return: a response iterable.
         """
-        status = self.status_code
-        if (
-            environ["REQUEST_METHOD"] == "HEAD"
-            or 100 <= status < 200
-            or status in (204, 304)
-        ):
-            iterable: t.Iterable[bytes] = ()
-        elif self.direct_passthrough:
-            return self.response  # type: ignore
-        else:
-            iterable = self.iter_encoded()
-        return ClosingIterator(iterable, self.close)
+        pass
 
     def get_wsgi_response(
         self, environ: WSGIEnvironment
@@ -559,9 +524,7 @@ class Response(_SansIOResponse):
         :param environ: the WSGI environment of the request.
         :return: an ``(app_iter, status, headers)`` tuple.
         """
-        headers = self.get_wsgi_headers(environ)
-        app_iter = self.get_app_iter(environ)
-        return app_iter, self.status, headers.to_wsgi_list()
+        pass
 
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse
@@ -590,7 +553,7 @@ class Response(_SansIOResponse):
 
         Calls :meth:`get_json` with default arguments.
         """
-        return self.get_json()
+        pass
 
     @t.overload
     def get_json(self, force: bool = ..., silent: t.Literal[False] = ...) -> t.Any: ...
@@ -611,25 +574,14 @@ class Response(_SansIOResponse):
         :param silent: Silence parsing errors and return ``None``
             instead.
         """
-        if not (force or self.is_json):
-            return None
-
-        data = self.get_data()
-
-        try:
-            return self.json_module.loads(data)
-        except ValueError:
-            if not silent:
-                raise
-
-            return None
+        pass
 
     # Stream
 
     @cached_property
     def stream(self) -> ResponseStream:
         """The response iterable as write-only stream."""
-        return ResponseStream(self)
+        pass
 
     def _wrap_range_response(self, start: int, length: int) -> None:
         """Wrap existing Response in case of Range Request context."""
@@ -789,8 +741,7 @@ class Response(_SansIOResponse):
             SHA-1 is used to generate the value. MD5 may not be
             available in some environments.
         """
-        if overwrite or "etag" not in self.headers:
-            self.set_etag(generate_etag(self.get_data()), weak)
+        pass
 
 
 class ResponseStream:
@@ -813,9 +764,6 @@ class ResponseStream:
         self.response.headers.pop("Content-Length", None)
         return len(value)
 
-    def writelines(self, seq: t.Iterable[bytes]) -> None:
-        for item in seq:
-            self.write(item)
 
     def close(self) -> None:
         self.closed = True
@@ -833,6 +781,3 @@ class ResponseStream:
         self.response._ensure_sequence()
         return sum(map(len, self.response.response))
 
-    @property
-    def encoding(self) -> str:
-        return "utf-8"

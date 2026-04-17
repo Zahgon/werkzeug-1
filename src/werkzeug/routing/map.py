@@ -133,13 +133,7 @@ class Map:
         for rulefactory in rules or ():
             self.add(rulefactory)
 
-    @property
-    def merge_slashes(self) -> bool:
-        return self._matcher.merge_slashes
 
-    @merge_slashes.setter
-    def merge_slashes(self, value: bool) -> None:
-        self._matcher.merge_slashes = value
 
     def is_endpoint_expecting(self, endpoint: t.Any, *arguments: str) -> bool:
         """Iterate over all rules and check if the endpoint expects
@@ -154,16 +148,8 @@ class Map:
                           as positional arguments.  Each one of them is
                           checked.
         """
-        self.update()
-        arguments_set = set(arguments)
-        for rule in self._rules_by_endpoint[endpoint]:
-            if arguments_set.issubset(rule.arguments):
-                return True
-        return False
+        pass
 
-    @property
-    def _rules(self) -> list[Rule]:
-        return [rule for rules in self._rules_by_endpoint.values() for rule in rules]
 
     def iter_rules(self, endpoint: t.Any | None = None) -> t.Iterator[Rule]:
         """Iterate over all rules or the rules of an endpoint.
@@ -494,16 +480,7 @@ class MapAdapter:
         :param catch_http_exceptions: set to `True` to catch any of the
                                       werkzeug :class:`HTTPException`\\s.
         """
-        try:
-            try:
-                endpoint, args = self.match(path_info, method)
-            except RequestRedirect as e:
-                return e
-            return view_func(endpoint, args)
-        except HTTPException as e:
-            if catch_http_exceptions:
-                return e
-            raise
+        pass
 
     @t.overload
     def match(
@@ -679,9 +656,6 @@ class MapAdapter:
             if rule.redirect_to is not None:
                 if isinstance(rule.redirect_to, str):
 
-                    def _handle_match(match: t.Match[str]) -> str:
-                        value = rv[match.group(1)]
-                        return rule._converters[match.group(1)].to_url(value)
 
                     redirect_url = _simple_rule_re.sub(_handle_match, rule.redirect_to)
                 else:
@@ -713,26 +687,14 @@ class MapAdapter:
         :param method: the HTTP method used for matching.  Overrides the
                        method specified on binding.
         """
-        try:
-            self.match(path_info, method)
-        except RequestRedirect:
-            pass
-        except HTTPException:
-            return False
-        return True
+        pass
 
     def allowed_methods(self, path_info: str | None = None) -> t.Iterable[str]:
         """Returns the valid methods that match for a given path.
 
         .. versionadded:: 0.7
         """
-        try:
-            self.match(path_info, method="--")
-        except MethodNotAllowed as e:
-            return e.valid_methods  # type: ignore
-        except HTTPException:
-            pass
-        return []
+        pass
 
     def get_host(self, domain_part: str | None) -> str:
         """Figures out the full host name for the given domain part.  The

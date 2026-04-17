@@ -25,7 +25,7 @@ def responder(f: t.Callable[..., WSGIApplication]) -> WSGIApplication:
         def application(environ, start_response):
             return Response('Hello World!')
     """
-    return update_wrapper(lambda *a: f(*a)(*a[-2:]), f)
+    pass
 
 
 def get_current_url(
@@ -323,12 +323,6 @@ class FileWrapper:
         if hasattr(self.file, "close"):
             self.file.close()
 
-    def seekable(self) -> bool:
-        if hasattr(self.file, "seekable"):
-            return self.file.seekable()
-        if hasattr(self.file, "seek"):
-            return True
-        return False
 
     def seek(self, *args: t.Any) -> None:
         if hasattr(self.file, "seek"):
@@ -387,42 +381,8 @@ class _RangeWrapper:
     def __iter__(self) -> _RangeWrapper:
         return self
 
-    def _next_chunk(self) -> bytes:
-        try:
-            chunk = next(self.iterable)
-            self.read_length += len(chunk)
-            return chunk
-        except StopIteration:
-            self.end_reached = True
-            raise
 
-    def _first_iteration(self) -> tuple[bytes | None, int]:
-        chunk = None
-        if self.seekable:
-            self.iterable.seek(self.start_byte)  # type: ignore
-            self.read_length = self.iterable.tell()  # type: ignore
-            contextual_read_length = self.read_length
-        else:
-            while self.read_length <= self.start_byte:
-                chunk = self._next_chunk()
-            if chunk is not None:
-                chunk = chunk[self.start_byte - self.read_length :]
-            contextual_read_length = self.start_byte
-        return chunk, contextual_read_length
 
-    def _next(self) -> bytes:
-        if self.end_reached:
-            raise StopIteration()
-        chunk = None
-        contextual_read_length = self.read_length
-        if self.read_length == 0:
-            chunk, contextual_read_length = self._first_iteration()
-        if chunk is None:
-            chunk = self._next_chunk()
-        if self.end_byte is not None and self.read_length >= self.end_byte:
-            self.end_reached = True
-            return chunk[: self.end_byte - contextual_read_length]
-        return chunk
 
     def __next__(self) -> bytes:
         chunk = self._next()
@@ -477,7 +437,7 @@ class LimitedStream(io.RawIOBase):
     @property
     def is_exhausted(self) -> bool:
         """Whether the current stream position has reached the limit."""
-        return self._pos >= self.limit
+        pass
 
     def on_exhausted(self) -> None:
         """Called when attempting to read after the limit has been reached.
@@ -491,8 +451,7 @@ class LimitedStream(io.RawIOBase):
         .. versionchanged:: 2.3
             Any return value is ignored.
         """
-        if self._limit_is_max:
-            raise RequestEntityTooLarge()
+        pass
 
     def on_disconnect(self, error: Exception | None = None) -> None:
         """Called when an attempted read receives zero bytes before the limit was
@@ -509,8 +468,7 @@ class LimitedStream(io.RawIOBase):
         .. versionchanged:: 2.3
             Any return value is ignored.
         """
-        if not self._limit_is_max or error is not None:
-            raise ClientDisconnected()
+        pass
 
         # If the limit is a maximum, then we may have read zero bytes because the
         # streaming body is complete. There's no way to distinguish that from the
@@ -526,77 +484,9 @@ class LimitedStream(io.RawIOBase):
         .. versionchanged:: 2.2.3
             Handle case where wrapped stream returns fewer bytes than requested.
         """
-        if not self.is_exhausted:
-            return self.readall()
+        pass
 
-        return b""
 
-    def readinto(self, b: bytearray) -> int | None:  # type: ignore[override]
-        size = len(b)
-        remaining = self.limit - self._pos
-
-        if remaining <= 0:
-            self.on_exhausted()
-            return 0
-
-        if hasattr(self._stream, "readinto"):
-            # Use stream.readinto if it's available.
-            if size <= remaining:
-                # The size fits in the remaining limit, use the buffer directly.
-                try:
-                    out_size: int | None = self._stream.readinto(b)
-                except (OSError, ValueError) as e:
-                    self.on_disconnect(error=e)
-                    return 0
-            else:
-                # Use a temp buffer with the remaining limit as the size.
-                temp_b = bytearray(remaining)
-
-                try:
-                    out_size = self._stream.readinto(temp_b)
-                except (OSError, ValueError) as e:
-                    self.on_disconnect(error=e)
-                    return 0
-
-                if out_size:
-                    b[:out_size] = temp_b
-        else:
-            # WSGI requires that stream.read is available.
-            try:
-                data = self._stream.read(min(size, remaining))
-            except (OSError, ValueError) as e:
-                self.on_disconnect(error=e)
-                return 0
-
-            out_size = len(data)
-            b[:out_size] = data
-
-        if not out_size:
-            # Read zero bytes from the stream.
-            self.on_disconnect()
-            return 0
-
-        self._pos += out_size
-        return out_size
-
-    def readall(self) -> bytes:
-        if self.is_exhausted:
-            self.on_exhausted()
-            return b""
-
-        out = bytearray()
-
-        # The parent implementation uses "while True", which results in an extra read.
-        while not self.is_exhausted:
-            data = self.read(1024 * 64)
-
-            # Stream may return empty before a max limit is reached.
-            if not data:
-                break
-
-            out.extend(data)
-
-        return bytes(out)
 
     def tell(self) -> int:
         """Return the current stream position.
@@ -605,5 +495,3 @@ class LimitedStream(io.RawIOBase):
         """
         return self._pos
 
-    def readable(self) -> bool:
-        return True

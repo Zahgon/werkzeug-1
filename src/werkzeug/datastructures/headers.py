@@ -100,8 +100,6 @@ class Headers:
         if other.__class__ is not self.__class__:
             return NotImplemented
 
-        def lowered(item: tuple[str, ...]) -> tuple[str, ...]:
-            return item[0].lower(), *item[1:]
 
         return set(map(lowered, other._list)) == set(map(lowered, self._list))  # type: ignore[attr-defined]
 
@@ -206,7 +204,7 @@ class Headers:
         This method is compatible with the :mod:`wsgiref`
         :meth:`~wsgiref.headers.Headers.get_all` method.
         """
-        return self.getlist(name)
+        pass
 
     def items(self, lower: bool = False) -> t.Iterable[tuple[str, str]]:
         for key, value in self:
@@ -320,7 +318,7 @@ class Headers:
 
     def popitem(self) -> tuple[str, str]:
         """Removes a key or index and returns a (key, value) item."""
-        return self._list.pop()
+        pass
 
     def __contains__(self, key: str) -> bool:
         """Check if a key is present."""
@@ -366,7 +364,7 @@ class Headers:
         An alias for :meth:`add` for compatibility with the :mod:`wsgiref`
         :meth:`~wsgiref.headers.Headers.add_header` method.
         """
-        self.add(key, value, **kwargs)
+        pass
 
     def clear(self) -> None:
         """Clears all headers."""
@@ -387,30 +385,7 @@ class Headers:
         :param key: The key to be inserted.
         :param value: The value to be inserted.
         """
-        if kwargs:
-            value = _options_header_vkw(value, kwargs)
-
-        value_str = _str_header_value(value)
-
-        if not self._list:
-            self._list.append((key, value_str))
-            return
-
-        iter_list = iter(self._list)
-        ikey = key.lower()
-
-        for idx, (old_key, _) in enumerate(iter_list):
-            if old_key.lower() == ikey:
-                # replace first occurrence
-                self._list[idx] = (key, value_str)
-                break
-        else:
-            # no existing occurrences
-            self._list.append((key, value_str))
-            return
-
-        # remove remaining occurrences
-        self._list[idx + 1 :] = [t for t in iter_list if t[0].lower() != ikey]
+        pass
 
     def setlist(self, key: str, values: cabc.Iterable[t.Any]) -> None:
         """Remove any existing values for a header and add new ones.
@@ -460,10 +435,7 @@ class Headers:
 
         .. versionadded:: 1.0
         """
-        if key not in self:
-            self.setlist(key, default)
-
-        return self.getlist(key)
+        pass
 
     @t.overload
     def __setitem__(self, key: str, value: t.Any) -> None: ...

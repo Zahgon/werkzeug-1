@@ -62,7 +62,7 @@ class Accept(ImmutableList[tuple[str, float]]):
 
     def _specificity(self, value: str) -> tuple[bool, ...]:
         """Returns a tuple describing the value's specificity."""
-        return (value != "*",)
+        pass
 
     def _value_matches(self, value: str, item: str) -> bool:
         """Check if a value matches a given accept item."""
@@ -150,12 +150,6 @@ class Accept(ImmutableList[tuple[str, float]]):
     def __str__(self) -> str:
         return self.to_header()
 
-    def _best_single_match(self, match: str) -> tuple[str, float] | None:
-        for client_item, quality in self:
-            if self._value_matches(match, client_item):
-                # self is sorted by specificity descending, we can exit
-                return client_item, quality
-        return None
 
     @t.overload
     def best_match(self, matches: cabc.Iterable[str]) -> str | None: ...
@@ -171,31 +165,12 @@ class Accept(ImmutableList[tuple[str, float]]):
         :param matches: a list of matches to check for
         :param default: the value that is returned if none match
         """
-        result = default
-        best_quality: float = -1
-        best_specificity: tuple[float, ...] = (-1,)
-        for server_item in matches:
-            match = self._best_single_match(server_item)
-            if not match:
-                continue
-            client_item, quality = match
-            specificity = self._specificity(client_item)
-            if quality <= 0 or quality < best_quality:
-                continue
-            # better quality or same quality but more specific => better match
-            if quality > best_quality or specificity > best_specificity:
-                result = server_item
-                best_quality = quality
-                best_specificity = specificity
-        return result
+        pass
 
     @property
     def best(self) -> str | None:
         """The best match as value."""
-        if self:
-            return self[0][0]
-
-        return None
+        pass
 
 
 _mime_split_re = re.compile(r"/|(?:\s*;\s*)")
@@ -210,8 +185,6 @@ class MIMEAccept(Accept):
     mimetypes.
     """
 
-    def _specificity(self, value: str) -> tuple[bool, ...]:
-        return tuple(x != "*" for x in _mime_split_re.split(value))
 
     def _value_matches(self, value: str, item: str) -> bool:
         # item comes from the client, can't match if it's invalid.
@@ -256,17 +229,17 @@ class MIMEAccept(Accept):
     @property
     def accept_html(self) -> bool:
         """True if this object accepts HTML."""
-        return "text/html" in self or self.accept_xhtml  # type: ignore[comparison-overlap]
+        pass
 
     @property
     def accept_xhtml(self) -> bool:
         """True if this object accepts XHTML."""
-        return "application/xhtml+xml" in self or "application/xml" in self  # type: ignore[comparison-overlap]
+        pass
 
     @property
     def accept_json(self) -> bool:
         """True if this object accepts JSON."""
-        return "application/json" in self  # type: ignore[comparison-overlap]
+        pass
 
 
 _locale_delim_re = re.compile(r"[_-]")
@@ -306,35 +279,7 @@ class LanguageAccept(Accept):
         :param matches: A list of supported languages to find a match.
         :param default: The value that is returned if none match.
         """
-        # Look for an exact match first. If a client accepts "en-US",
-        # "en-US" is a valid match at this point.
-        result = super().best_match(matches)
-
-        if result is not None:
-            return result
-
-        # Fall back to accepting primary tags. If a client accepts
-        # "en-US", "en" is a valid match at this point. Need to use
-        # re.split to account for 2 or 3 letter codes.
-        fallback = Accept(
-            [(_locale_delim_re.split(item[0], 1)[0], item[1]) for item in self]
-        )
-        result = fallback.best_match(matches)
-
-        if result is not None:
-            return result
-
-        # Fall back to matching primary tags. If the client accepts
-        # "en", "en-US" is a valid match at this point.
-        fallback_matches = [_locale_delim_re.split(item, 1)[0] for item in matches]
-        result = super().best_match(fallback_matches)
-
-        # Return a value from the original match list. Find the first
-        # original value that starts with the matched primary tag.
-        if result is not None:
-            return next(item for item in matches if item.startswith(result))
-
-        return default
+        pass
 
 
 class _CharsetAccept(Accept):

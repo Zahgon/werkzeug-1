@@ -343,10 +343,7 @@ class MultiDict(TypeConversionDict[K, V]):
                              before returned.
         :return: a :class:`list`
         """
-        if key not in self:
-            super().__setitem__(key, list(default_list or ()))  # type: ignore[assignment]
-
-        return super().__getitem__(key)  # type: ignore[return-value]
+        pass
 
     def items(self, multi: bool = False) -> cabc.Iterable[tuple[K, V]]:  # type: ignore[override]
         """Return an iterator of ``(key, value)`` pairs.
@@ -507,17 +504,7 @@ class MultiDict(TypeConversionDict[K, V]):
 
     def popitem(self) -> tuple[K, V]:
         """Pop an item from the dict."""
-        item: tuple[K, list[V]]
-
-        try:
-            item = super().popitem()  # type: ignore[assignment]
-
-            if len(item[1]) == 0:
-                raise exceptions.BadRequestKeyError(item[0])
-
-            return item[0], item[1][0]
-        except KeyError as e:
-            raise exceptions.BadRequestKeyError(e.args[0]) from None
+        pass
 
     def poplist(self, key: K) -> list[V]:
         """Pop the list for a key from the dict.  If the key is not in the dict
@@ -527,14 +514,11 @@ class MultiDict(TypeConversionDict[K, V]):
            If the key does no longer exist a list is returned instead of
            raising an error.
         """
-        return super().pop(key, [])  # type: ignore[return-value]
+        pass
 
     def popitemlist(self) -> tuple[K, list[V]]:
         """Pop a ``(key, list)`` tuple from the dict."""
-        try:
-            return super().popitem()  # type: ignore[return-value]
-        except KeyError as e:
-            raise exceptions.BadRequestKeyError(e.args[0]) from None
+        pass
 
     def __copy__(self) -> te.Self:
         return self.copy()
@@ -860,9 +844,7 @@ class HeaderSet(cabc.MutableSet[str]):
                                 :class:`HeaderSet`, otherwise they will
                                 be lowercase.
         """
-        if preserve_casing:
-            return set(self._headers)
-        return set(self._set)
+        pass
 
     def to_header(self) -> str:
         """Convert the header set into an HTTP header string."""

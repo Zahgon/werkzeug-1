@@ -61,12 +61,6 @@ class RequestRedirect(HTTPException, RoutingException):
         super().__init__(new_url)
         self.new_url = new_url
 
-    def get_response(
-        self,
-        environ: WSGIEnvironment | Request | None = None,
-        scope: dict[str, t.Any] | None = None,
-    ) -> Response:
-        return redirect(self.new_url, self.code)
 
 
 class RequestPath(RoutingException):
@@ -106,30 +100,7 @@ class BuildError(RoutingException, LookupError):
         self.method = method
         self.adapter = adapter
 
-    @cached_property
-    def suggested(self) -> Rule | None:
-        return self.closest_rule(self.adapter)
 
-    def closest_rule(self, adapter: MapAdapter | None) -> Rule | None:
-        def _score_rule(rule: Rule) -> float:
-            return sum(
-                [
-                    0.98
-                    * difflib.SequenceMatcher(
-                        # endpoints can be any type, compare as strings
-                        None,
-                        str(rule.endpoint),
-                        str(self.endpoint),
-                    ).ratio(),
-                    0.01 * bool(set(self.values or ()).issubset(rule.arguments)),
-                    0.01 * bool(rule.methods and self.method in rule.methods),
-                ]
-            )
-
-        if adapter and adapter.map._rules:
-            return max(adapter.map._rules, key=_score_rule)
-
-        return None
 
     def __str__(self) -> str:
         message = [f"Could not build url for endpoint {self.endpoint!r}"]

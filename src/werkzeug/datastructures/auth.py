@@ -95,27 +95,7 @@ class Authorization:
 
         .. versionadded:: 2.3
         """
-        if not value:
-            return None
-
-        scheme, _, rest = value.partition(" ")
-        scheme = scheme.lower()
-        rest = rest.strip()
-
-        if scheme == "basic":
-            try:
-                username, _, password = base64.b64decode(rest).decode().partition(":")
-            except (binascii.Error, UnicodeError):
-                return None
-
-            return cls(scheme, {"username": username, "password": password})
-
-        if "=" in rest.rstrip("="):
-            # = that is not trailing, this is parameters.
-            return cls(scheme, parse_dict_header(rest), None)
-
-        # No = or only trailing =, this is a token.
-        return cls(scheme, None, rest)
+        pass
 
     def to_header(self) -> str:
         """Produce an ``Authorization`` header value representing this data.
@@ -186,31 +166,23 @@ class WWWAuthenticate:
     @property
     def type(self) -> str:
         """The authorization scheme, like ``basic``, ``digest``, or ``bearer``."""
-        return self._type
+        pass
 
-    @type.setter
-    def type(self, value: str) -> None:
-        self._type = value
-        self._trigger_on_update()
 
     @property
     def parameters(self) -> dict[str, str | None]:
         """A dict of parameters for the header. Only one of this or :attr:`token` should
         have a value for a given scheme.
         """
-        return self._parameters
+        pass
 
-    @parameters.setter
-    def parameters(self, value: dict[str, str]) -> None:
-        self._parameters = CallbackDict(value, lambda _: self._trigger_on_update())
-        self._trigger_on_update()
 
     @property
     def token(self) -> str | None:
         """A dict of parameters for the header. Only one of this or :attr:`token` should
         have a value for a given scheme.
         """
-        return self._token
+        pass
 
     @token.setter
     def token(self, value: str | None) -> None:
@@ -219,8 +191,7 @@ class WWWAuthenticate:
 
         .. versionadded:: 2.3
         """
-        self._token = value
-        self._trigger_on_update()
+        pass
 
     def __getitem__(self, key: str) -> str | None:
         return self.parameters.get(key)
@@ -276,19 +247,7 @@ class WWWAuthenticate:
 
         .. versionadded:: 2.3
         """
-        if not value:
-            return None
-
-        scheme, _, rest = value.partition(" ")
-        scheme = scheme.lower()
-        rest = rest.strip()
-
-        if "=" in rest.rstrip("="):
-            # = that is not trailing, this is parameters.
-            return cls(scheme, parse_dict_header(rest), None)
-
-        # No = or only trailing =, this is a token.
-        return cls(scheme, None, rest)
+        pass
 
     def to_header(self) -> str:
         """Produce a ``WWW-Authenticate`` header value representing this data."""

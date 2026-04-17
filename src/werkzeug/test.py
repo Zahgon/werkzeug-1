@@ -152,10 +152,7 @@ def encode_multipart(
     .. versionchanged:: 3.0
         The ``charset`` parameter was removed.
     """
-    stream, length, boundary = stream_encode_multipart(
-        values, use_tempfile=False, boundary=boundary
-    )
-    return boundary, stream.read()
+    pass
 
 
 def _iter_data(data: t.Mapping[str, t.Any]) -> t.Iterator[tuple[str, t.Any]]:
@@ -386,27 +383,7 @@ class EnvironBuilder:
 
         .. versionadded:: 0.15
         """
-        headers = Headers(EnvironHeaders(environ))
-        out = {
-            "path": _wsgi_decoding_dance(environ["PATH_INFO"]),
-            "base_url": cls._make_base_url(
-                environ["wsgi.url_scheme"],
-                headers.pop("Host"),
-                _wsgi_decoding_dance(environ["SCRIPT_NAME"]),
-            ),
-            "query_string": _wsgi_decoding_dance(environ["QUERY_STRING"]),
-            "method": environ["REQUEST_METHOD"],
-            "input_stream": environ["wsgi.input"],
-            "content_type": headers.pop("Content-Type", None),
-            "content_length": headers.pop("Content-Length", None),
-            "errors_stream": environ["wsgi.errors"],
-            "multithread": environ["wsgi.multithread"],
-            "multiprocess": environ["wsgi.multiprocess"],
-            "run_once": environ["wsgi.run_once"],
-            "headers": headers,
-        }
-        out.update(kwargs)
-        return cls(**out)
+        pass
 
     def _add_file_from_data(
         self,
@@ -414,35 +391,16 @@ class EnvironBuilder:
         value: (t.IO[bytes] | tuple[t.IO[bytes], str] | tuple[t.IO[bytes], str, str]),
     ) -> None:
         """Called in the EnvironBuilder to add files from the data dict."""
-        if isinstance(value, tuple):
-            self.files.add_file(key, *value)
-        else:
-            self.files.add_file(key, value)
+        pass
 
-    @staticmethod
-    def _make_base_url(scheme: str, host: str, script_root: str) -> str:
-        return urlunsplit((scheme, host, script_root, "", "")).rstrip("/") + "/"
 
     @property
     def base_url(self) -> str:
         """The base URL is used to extract the URL scheme, host name,
         port, and root path.
         """
-        return self._make_base_url(self.url_scheme, self.host, self.script_root)
+        pass
 
-    @base_url.setter
-    def base_url(self, value: str | None) -> None:
-        if value is None:
-            scheme = "http"
-            netloc = "localhost"
-            script_root = ""
-        else:
-            scheme, netloc, script_root, qs, anchor = urlsplit(value)
-            if qs or anchor:
-                raise ValueError("base url must not contain a query string or fragment")
-        self.script_root = script_root.rstrip("/")
-        self.host = netloc
-        self.url_scheme = scheme
 
     @property
     def content_type(self) -> str | None:
@@ -450,21 +408,8 @@ class EnvironBuilder:
         the :attr:`headers`.  Do not set if you set :attr:`files` or
         :attr:`form` for auto detection.
         """
-        ct = self.headers.get("Content-Type")
-        if ct is None and not self._input_stream:
-            if self._files:
-                return "multipart/form-data"
-            if self._form:
-                return "application/x-www-form-urlencoded"
-            return None
-        return ct
+        pass
 
-    @content_type.setter
-    def content_type(self, value: str | None) -> None:
-        if value is None:
-            self.headers.pop("Content-Type", None)
-        else:
-            self.headers["Content-Type"] = value
 
     @property
     def mimetype(self) -> str | None:
@@ -472,12 +417,8 @@ class EnvironBuilder:
 
         .. versionadded:: 0.14
         """
-        ct = self.content_type
-        return ct.split(";")[0].strip() if ct else None
+        pass
 
-    @mimetype.setter
-    def mimetype(self, value: str) -> None:
-        self.content_type = get_content_type(value, "utf-8")
 
     @property
     def mimetype_params(self) -> t.Mapping[str, str]:
@@ -487,12 +428,7 @@ class EnvironBuilder:
 
         .. versionadded:: 0.14
         """
-
-        def on_update(d: CallbackDict[str, str]) -> None:
-            self.headers["Content-Type"] = dump_options_header(self.mimetype, d)
-
-        d = parse_options_header(self.headers.get("content-type", ""))[1]
-        return CallbackDict(d, on_update)
+        pass
 
     @property
     def content_length(self) -> int | None:
@@ -500,14 +436,8 @@ class EnvironBuilder:
         :attr:`headers`.  Do not set if you set :attr:`files` or
         :attr:`form` for auto detection.
         """
-        return self.headers.get("Content-Length", type=int)
+        pass
 
-    @content_length.setter
-    def content_length(self, value: int | None) -> None:
-        if value is None:
-            self.headers.pop("Content-Length", None)
-        else:
-            self.headers["Content-Length"] = str(value)
 
     @property
     def form(self) -> MultiDict[str, str]:
@@ -521,15 +451,8 @@ class EnvironBuilder:
         Cannot be accessed if :attr:`input_stream` is set. Setting this will
         unset :attr:`input_stream`.
         """
-        if self.input_stream is not None:
-            raise AttributeError("Not available when 'input_stream' is set.")
+        pass
 
-        return self._form
-
-    @form.setter
-    def form(self, value: MultiDict[str, str]) -> None:
-        self._input_stream = None
-        self._form = value
 
     @property
     def files(self) -> FileMultiDict:
@@ -553,15 +476,8 @@ class EnvironBuilder:
         Setting this will _not_ close files in the previous dict, call
         :meth:`.FileMultiDict.close` first if that's needed.
         """
-        if self.input_stream is not None:
-            raise AttributeError("Not available when 'input_stream' is set.")
+        pass
 
-        return self._files
-
-    @files.setter
-    def files(self, value: FileMultiDict) -> None:
-        self._input_stream = None
-        self._files = value
 
     @property
     def input_stream(self) -> t.IO[bytes] | None:
@@ -578,13 +494,8 @@ class EnvironBuilder:
         .. versionchanged:: 3.2
             Any values in :attr:`files` are closed first when setting this.
         """
-        return self._input_stream
+        pass
 
-    @input_stream.setter
-    def input_stream(self, value: t.IO[bytes] | None) -> None:
-        self._form.clear()
-        self._files.clear()
-        self._input_stream = value
 
     @property
     def query_string(self) -> str:
@@ -594,18 +505,8 @@ class EnvironBuilder:
         :attr:`args` is set, this will be the encoded value of that. If neither
         is set, this is the empty string.
         """
-        if self._query_string is None:
-            if self._args is not None:
-                return _urlencode(self._args)
+        pass
 
-            return ""
-
-        return self._query_string
-
-    @query_string.setter
-    def query_string(self, value: str | None) -> None:
-        self._args.clear()
-        self._query_string = value
 
     @property
     def args(self) -> MultiDict[str, str]:
@@ -616,35 +517,18 @@ class EnvironBuilder:
 
         Setting this will unset :attr:`query_string`.
         """
-        if self._query_string is not None:
-            raise AttributeError("Not available when 'query_string' is set.")
+        pass
 
-        return self._args
-
-    @args.setter
-    def args(self, value: MultiDict[str, str]) -> None:
-        self._query_string = None
-        self._args = value
 
     @property
     def server_name(self) -> str:
         """The server name (read-only, use :attr:`host` to set)"""
-        return self.host.split(":", 1)[0]
+        pass
 
     @property
     def server_port(self) -> int:
         """The server port as integer (read-only, use :attr:`host` to set)"""
-        pieces = self.host.split(":", 1)
-
-        if len(pieces) == 2:
-            try:
-                return int(pieces[1])
-            except ValueError:
-                pass
-
-        if self.url_scheme == "https":
-            return 443
-        return 80
+        pass
 
     def __del__(self) -> None:
         self.close()
@@ -760,10 +644,7 @@ class EnvironBuilder:
 
         :param cls: The request wrapper to use.
         """
-        if cls is None:
-            cls = self.request_class
-
-        return cls(self.get_environ())
+        pass
 
 
 class ClientRedirectError(Exception):
@@ -841,12 +722,7 @@ class Client:
 
         .. versionadded:: 2.3
         """
-        if self._cookies is None:
-            raise TypeError(
-                "Cookies are disabled. Create a client with 'use_cookies=True'."
-            )
-
-        return self._cookies.get((domain, path, key))
+        pass
 
     def set_cookie(
         self,
@@ -1002,62 +878,7 @@ class Client:
 
         :meta private:
         """
-        scheme, netloc, path, qs, anchor = urlsplit(response.location)
-        builder = EnvironBuilder.from_environ(
-            response.request.environ, path=path, query_string=qs
-        )
-
-        to_name_parts = netloc.split(":", 1)[0].split(".")
-        from_name_parts = builder.server_name.split(".")
-
-        if to_name_parts != [""]:
-            # The new location has a host, use it for the base URL.
-            builder.url_scheme = scheme
-            builder.host = netloc
-        else:
-            # A local redirect with autocorrect_location_header=False
-            # doesn't have a host, so use the request's host.
-            to_name_parts = from_name_parts
-
-        # Explain why a redirect to a different server name won't be followed.
-        if to_name_parts != from_name_parts:
-            if to_name_parts[-len(from_name_parts) :] == from_name_parts:
-                if not self.allow_subdomain_redirects:
-                    raise RuntimeError("Following subdomain redirects is not enabled.")
-            else:
-                raise RuntimeError("Following external redirects is not supported.")
-
-        path_parts = path.split("/")
-        root_parts = builder.script_root.split("/")
-
-        if path_parts[: len(root_parts)] == root_parts:
-            # Strip the script root from the path.
-            builder.path = path[len(builder.script_root) :]
-        else:
-            # The new location is not under the script root, so use the
-            # whole path and clear the previous root.
-            builder.path = path
-            builder.script_root = ""
-
-        # Certain statuses switch to GET in some cases
-        # https://fetch.spec.whatwg.org/#http-redirect-fetch
-        if (response.status_code in {301, 302} and builder.method == "POST") or (
-            response.status_code == 303 and builder.method not in {"GET", "HEAD"}
-        ):
-            builder.method = "GET"
-
-            if builder.input_stream is not None:
-                builder.input_stream.close()
-
-            builder.input_stream = None  # also closes and clears form and files
-            builder.content_type = None
-            builder.content_length = None
-            builder.headers.pop("Content-Encoding", None)
-            builder.headers.pop("Content-Language", None)
-            builder.headers.pop("Content-Location", None)
-            builder.headers.pop("Transfer-Encoding", None)
-
-        return self.open(builder, buffered=buffered)
+        pass
 
     def open(
         self,
@@ -1097,58 +918,7 @@ class Client:
         .. versionchanged:: 0.5
             Added the ``follow_redirects`` parameter.
         """
-        request: Request | None = None
-
-        if not kwargs and len(args) == 1:
-            arg = args[0]
-
-            if isinstance(arg, EnvironBuilder):
-                request = arg.get_request()
-            elif isinstance(arg, dict):
-                with EnvironBuilder.from_environ(arg) as builder:
-                    request = builder.get_request()
-            elif isinstance(arg, Request):
-                request = arg
-
-        if request is None:
-            with EnvironBuilder(*args, **kwargs) as builder:
-                request = builder.get_request()
-
-        response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
-        response = self.response_wrapper(*response_parts, request=request)
-
-        redirects = set()
-        history: list[TestResponse] = []
-
-        if not follow_redirects:
-            return response
-
-        while response.status_code in {301, 302, 303, 307, 308}:
-            # Exhaust intermediate response bodies to ensure middleware
-            # that returns an iterator runs any cleanup code.
-            if not buffered:
-                response.make_sequence()
-                response.close()
-
-            new_redirect_entry = (response.location, response.status_code)
-
-            if new_redirect_entry in redirects:
-                raise ClientRedirectError(
-                    f"Loop detected: A {response.status_code} redirect"
-                    f" to {response.location} was already made."
-                )
-
-            redirects.add(new_redirect_entry)
-            response.history = tuple(history)
-            history.append(response)
-            response = self.resolve_redirect(response, buffered=buffered)
-        else:
-            # This is the final request after redirects.
-            response.history = tuple(history)
-            # Close the input stream when closing the response, in case
-            # the input is an open temporary file.
-            response.call_on_close(request.input_stream.close)
-            return response
+        pass
 
     def get(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``GET``."""
@@ -1157,18 +927,15 @@ class Client:
 
     def post(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``POST``."""
-        kw["method"] = "POST"
-        return self.open(*args, **kw)
+        pass
 
     def put(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``PUT``."""
-        kw["method"] = "PUT"
-        return self.open(*args, **kw)
+        pass
 
     def delete(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``DELETE``."""
-        kw["method"] = "DELETE"
-        return self.open(*args, **kw)
+        pass
 
     def patch(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``PATCH``."""
@@ -1177,18 +944,15 @@ class Client:
 
     def options(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``OPTIONS``."""
-        kw["method"] = "OPTIONS"
-        return self.open(*args, **kw)
+        pass
 
     def head(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``HEAD``."""
-        kw["method"] = "HEAD"
-        return self.open(*args, **kw)
+        pass
 
     def trace(self, *args: t.Any, **kw: t.Any) -> TestResponse:
         """Call :meth:`open` with ``method`` set to ``TRACE``."""
-        kw["method"] = "TRACE"
-        return self.open(*args, **kw)
+        pass
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.application!r}>"
@@ -1239,17 +1003,6 @@ def run_wsgi_app(
     response: tuple[str, list[tuple[str, str]]] | None = None
     buffer: list[bytes] = []
 
-    def start_response(status, headers, exc_info=None):  # type: ignore
-        nonlocal response
-
-        if exc_info:
-            try:
-                raise exc_info[1].with_traceback(exc_info[2])
-            finally:
-                exc_info = None
-
-        response = (status, headers)
-        return buffer.append
 
     app_rv = app(environ, start_response)
     close_func = getattr(app_rv, "close", None)
@@ -1345,7 +1098,7 @@ class TestResponse(Response):
 
         .. versionadded:: 2.1
         """
-        return self.get_data(as_text=True)
+        pass
 
 
 @dataclasses.dataclass
@@ -1443,12 +1196,4 @@ class Cookie:
             same_site=params.get("samesite"),
         )
 
-    @property
-    def _storage_key(self) -> tuple[str, str, str]:
-        return self.domain, self.path, self.decoded_key
 
-    @property
-    def _should_delete(self) -> bool:
-        return self.max_age == 0 or (
-            self.expires is not None and self.expires.timestamp() == 0
-        )

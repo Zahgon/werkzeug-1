@@ -97,22 +97,6 @@ def _add_subclass_info(inner: str, obj: object, base: type | tuple[type, ...]) -
 def _sequence_repr_maker(
     left: str, right: str, base: type, limit: int = 8
 ) -> t.Callable[[DebugReprGenerator, t.Iterable[t.Any], bool], str]:
-    def proxy(self: DebugReprGenerator, obj: t.Iterable[t.Any], recursive: bool) -> str:
-        if recursive:
-            return _add_subclass_info(f"{left}...{right}", obj, base)
-        buf = [left]
-        have_extended_section = False
-        for idx, item in enumerate(obj):
-            if idx:
-                buf.append(", ")
-            if idx == limit:
-                buf.append('<span class="extended">')
-                have_extended_section = True
-            buf.append(self.repr(item))
-        if have_extended_section:
-            buf.append("</span>")
-        buf.append(right)
-        return _add_subclass_info("".join(buf), obj, base)
 
     return proxy
 
@@ -129,115 +113,12 @@ class DebugReprGenerator:
         '<span class="module">collections.</span>deque([', "])", deque
     )
 
-    def regex_repr(self, obj: t.Pattern[t.AnyStr]) -> str:
-        pattern = repr(obj.pattern)
-        pattern = codecs.decode(pattern, "unicode-escape", "ignore")
-        pattern = f"r{pattern}"
-        return f're.compile(<span class="string regex">{pattern}</span>)'
 
-    def string_repr(self, obj: str | bytes, limit: int = 70) -> str:
-        buf = ['<span class="string">']
-        r = repr(obj)
 
-        # shorten the repr when the hidden part would be at least 3 chars
-        if len(r) - limit > 2:
-            buf.extend(
-                (
-                    escape(r[:limit]),
-                    '<span class="extended">',
-                    escape(r[limit:]),
-                    "</span>",
-                )
-            )
-        else:
-            buf.append(escape(r))
 
-        buf.append("</span>")
-        out = "".join(buf)
 
-        # if the repr looks like a standard string, add subclass info if needed
-        if r[0] in "'\"" or (r[0] == "b" and r[1] in "'\""):
-            return _add_subclass_info(out, obj, (bytes, str))
 
-        # otherwise, assume the repr distinguishes the subclass already
-        return out
 
-    def dict_repr(
-        self,
-        d: dict[int, None] | dict[str, int] | dict[str | int, int],
-        recursive: bool,
-        limit: int = 5,
-    ) -> str:
-        if recursive:
-            return _add_subclass_info("{...}", d, dict)
-        buf = ["{"]
-        have_extended_section = False
-        for idx, (key, value) in enumerate(d.items()):
-            if idx:
-                buf.append(", ")
-            if idx == limit - 1:
-                buf.append('<span class="extended">')
-                have_extended_section = True
-            buf.append(
-                f'<span class="pair"><span class="key">{self.repr(key)}</span>:'
-                f' <span class="value">{self.repr(value)}</span></span>'
-            )
-        if have_extended_section:
-            buf.append("</span>")
-        buf.append("}")
-        return _add_subclass_info("".join(buf), d, dict)
-
-    def object_repr(self, obj: t.Any) -> str:
-        r = repr(obj)
-        return f'<span class="object">{escape(r)}</span>'
-
-    def dispatch_repr(self, obj: t.Any, recursive: bool) -> str:
-        if obj is helper:
-            return f'<span class="help">{helper!r}</span>'
-        if isinstance(obj, (int, float, complex)):
-            return f'<span class="number">{obj!r}</span>'
-        if isinstance(obj, str) or isinstance(obj, bytes):
-            return self.string_repr(obj)
-        if isinstance(obj, RegexType):
-            return self.regex_repr(obj)
-        if isinstance(obj, list):
-            return self.list_repr(obj, recursive)
-        if isinstance(obj, tuple):
-            return self.tuple_repr(obj, recursive)
-        if isinstance(obj, set):
-            return self.set_repr(obj, recursive)
-        if isinstance(obj, frozenset):
-            return self.frozenset_repr(obj, recursive)
-        if isinstance(obj, dict):
-            return self.dict_repr(obj, recursive)
-        if isinstance(obj, deque):
-            return self.deque_repr(obj, recursive)
-        return self.object_repr(obj)
-
-    def fallback_repr(self) -> str:
-        try:
-            info = "".join(format_exception_only(*sys.exc_info()[:2]))
-        except Exception:
-            info = "?"
-        return (
-            '<span class="brokenrepr">'
-            f"&lt;broken repr ({escape(info.strip())})&gt;</span>"
-        )
-
-    def repr(self, obj: object) -> str:
-        recursive = False
-        for item in self._stack:
-            if item is obj:
-                recursive = True
-                break
-        self._stack.append(obj)
-        try:
-            try:
-                return self.dispatch_repr(obj, recursive)
-            except Exception:
-                return self.fallback_repr()
-        finally:
-            self._stack.pop()
 
     def dump_object(self, obj: object) -> str:
         repr = None

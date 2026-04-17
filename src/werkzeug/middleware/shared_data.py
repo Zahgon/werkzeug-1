@@ -145,78 +145,11 @@ class SharedDataMiddleware:
         certain files.  However by providing `disallow` in the constructor
         this method is overwritten.
         """
-        return True
+        pass
 
-    def _opener(self, filename: str) -> _TOpener:
-        return lambda: (
-            open(filename, "rb"),
-            datetime.fromtimestamp(os.path.getmtime(filename), tz=timezone.utc),
-            int(os.path.getsize(filename)),
-        )
 
-    def get_file_loader(self, filename: str) -> _TLoader:
-        return lambda x: (os.path.basename(filename), self._opener(filename))
 
-    def get_package_loader(self, package: str, package_path: str) -> _TLoader:
-        load_time = datetime.now(timezone.utc)
-        spec = importlib.util.find_spec(package)
-        reader = spec.loader.get_resource_reader(package)  # type: ignore[union-attr]
 
-        def loader(
-            path: str | None,
-        ) -> tuple[str | None, _TOpener | None]:
-            if path is None:
-                return None, None
-
-            path = safe_join(package_path, path)
-
-            if path is None:
-                return None, None
-
-            basename = posixpath.basename(path)
-
-            try:
-                resource = reader.open_resource(path)
-            except OSError:
-                return None, None
-
-            if isinstance(resource, BytesIO):
-                return (
-                    basename,
-                    lambda: (resource, load_time, len(resource.getvalue())),
-                )
-
-            return (
-                basename,
-                lambda: (
-                    resource,
-                    datetime.fromtimestamp(
-                        os.path.getmtime(resource.name), tz=timezone.utc
-                    ),
-                    os.path.getsize(resource.name),
-                ),
-            )
-
-        return loader
-
-    def get_directory_loader(self, directory: str) -> _TLoader:
-        def loader(
-            path: str | None,
-        ) -> tuple[str | None, _TOpener | None]:
-            if path is not None:
-                path = safe_join(directory, path)
-
-                if path is None:
-                    return None, None
-            else:
-                path = directory
-
-            if os.path.isfile(path):
-                return os.path.basename(path), self._opener(path)
-
-            return None, None
-
-        return loader
 
     def generate_etag(self, mtime: datetime, file_size: int, real_filename: str) -> str:
         fn_str = os.fsencode(real_filename)
