@@ -266,7 +266,7 @@ class WatchdogReloaderLoop(ReloaderLoop):
         trigger_reload = self.trigger_reload
 
         class EventHandler(PatternMatchingEventHandler):
-
+            pass
 
         reloader_name = Observer.__name__.lower()  # type: ignore[attr-defined]
 
